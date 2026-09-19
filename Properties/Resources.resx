@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+    <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+        <xsd:element name="root" msdata:IsDataSet="true">
+            <xsd:complexType>
+                <xsd:choice maxOccurs="unbounded">
+                    <xsd:element name="metadata">
+                        <xsd:complexType>
+                            <xsd:sequence>
+                                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+                            </xsd:sequence>
+                            <xsd:attribute name="name" use="required" type="xsd:string" />
+                            <xsd:attribute name="type" type="xsd:string" />
+                            <xsd:attribute name="mimetype" type="xsd:string" />
+                            <xsd:attribute ref="xml:space" />
+                        </xsd:complexType>
+                    </xsd:element>
+                    <xsd:element name="assembly">
+                        <xsd:complexType>
+                            <xsd:attribute name="alias" type="xsd:string" />
+                            <xsd:attribute name="name" type="xsd:string" />
+                        </xsd:complexType>
+                    </xsd:element>
+                    <xsd:element name="data">
+                        <xsd:complexType>
+                            <xsd:sequence>
+                                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+                            </xsd:sequence>
+                            <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+                            <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+                            <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+                            <xsd:attribute ref="xml:space" />
+                        </xsd:complexType>
+                    </xsd:element>
+                    <xsd:element name="resheader">
+                        <xsd:complexType>
+                            <xsd:sequence>
+                                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                            </xsd:sequence>
+                            <xsd:attribute name="name" type="xsd:string" use="required" />
+                        </xsd:complexType>
+                    </xsd:element>
+                </xsd:choice>
+            </xsd:complexType>
+        </xsd:element>
+    </xsd:schema>
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>2.0</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    </resheader>
+    <data name="WindowTitle" xml:space="preserve">
+        <value>点名器</value>
+    </data>
+    <data name="Waiting" xml:space="preserve">
+        <value>等待开抽</value>
+    </data>
+    <data name="StartTooltip" xml:space="preserve">
+        <value>开始</value>
+    </data>
+    <data name="PauseTooltip" xml:space="preserve">
+        <value>暂停</value>
+    </data>
+    <data name="ResetTooltip" xml:space="preserve">
+        <value>重置</value>
+    </data>
+    <data name="MultiAccountTooltip" xml:space="preserve">
+        <value>多账户</value>
+    </data>
+    <data name="SettingsTooltip" xml:space="preserve">
+        <value>设置</value>
+    </data>
+    <data name="Settings" xml:space="preserve">
+        <value>设置</value>
+    </data>
+    <data name="OpenFileTooltip" xml:space="preserve">
+        <value>打开文件</value>
+    </data>
+    <data name="Notice" xml:space="preserve">
+        <value>提示</value>
+    </data>
+    <data name="PeopleCount" xml:space="preserve">
+        <value>抽取人数</value>
+    </data>
+    <data name="Language" xml:space="preserve">
+        <value>语言</value>
+    </data>
+    <data name="Theme" xml:space="preserve">
+        <value>主题</value>
+    </data>
+    <data name="ThemeSystem" xml:space="preserve">
+        <value>跟随系统</value>
+    </data>
+    <data name="ThemeLight" xml:space="preserve">
+        <value>浅色</value>
+    </data>
+    <data name="ThemeDark" xml:space="preserve">
+        <value>深色</value>
+    </data>
+    <data name="Encoding" xml:space="preserve">
+        <value>文本编码</value>
+    </data>
+    <data name="AutoStop" xml:space="preserve">
+        <value>自动停止</value>
+    </data>
+    <data name="MachineLearning" xml:space="preserve">
+        <value>机器学习</value>
+    </data>
+    <data name="File" xml:space="preserve">
+        <value>名单文件</value>
+    </data>
+    <data name="Browse" xml:space="preserve">
+        <value>选择文件...</value>
+    </data>
+    <data name="ClearFile" xml:space="preserve">
+        <value>清除</value>
+    </data>
+    <data name="Confirm" xml:space="preserve">
+        <value>确认</value>
+    </data>
+    <data name="Version" xml:space="preserve">
+        <value>版本 1.0.0</value>
+    </data>
+    <data name="Copyright" xml:space="preserve">
+        <value>Copyright 2026 SXZ11454. All rights reserved.</value>
+    </data>
+    <data name="License" xml:space="preserve">
+        <value>许可协议：MIT</value>
+    </data>
+    <data name="Repository" xml:space="preserve">
+        <value>GitHub 仓库</value>
+    </data>
+    <data name="NoNames" xml:space="preserve">
+        <value>名单为空，请先在设置中选择名单文件</value>
+    </data>
+    <data name="TextFileFilter" xml:space="preserve">
+        <value>文本文件|*.txt|所有文件|*.*</value>
+    </data>
+</root>

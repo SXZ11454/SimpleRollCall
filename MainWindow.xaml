@@ -1,0 +1,72 @@
+<Window x:Class="SimpleRollCall.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SimpleRollCall"
+        xmlns:ui="http://schemas.modernwpf.com/2019"
+        ui:WindowHelper.UseModernWindowStyle="True"
+        mc:Ignorable="d"
+        Title="点名器" Height="600" Width="500" MinWidth="500" MinHeight="600">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="80"/>
+        </Grid.RowDefinitions>
+
+        <!-- Top: fills all remaining space; the draw text scales with the window
+             (Viewbox only shrinks, never enlarges, so the natural size is the max font size) -->
+        <Grid Grid.Row="0">
+            <Viewbox x:Name="DisplayBox" Stretch="Uniform" StretchDirection="DownOnly" Margin="24">
+                <Grid>
+                    <TextBlock x:Name="SingleText" Text="等待开抽" FontFamily="Segoe UI" FontSize="48" FontWeight="Bold"/>
+                    <WrapPanel x:Name="MultiPanel" Visibility="Collapsed" MaxWidth="1000"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Grid>
+            </Viewbox>
+        </Grid>
+
+        <!-- Middle: progress bar strip, fixed height 10, sits right above the bottom toolbar -->
+        <StackPanel Grid.Row="1" Height="10" VerticalAlignment="Bottom">
+            <ProgressBar x:Name="DrawProgress" Height="10" Margin="20,0" Value="0" IsIndeterminate="False"/>
+        </StackPanel>
+
+        <!-- Bottom: fixed height 80, toolbar -->
+        <StackPanel Grid.Row="2" VerticalAlignment="Center">
+            <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                <!-- Backdrop rectangle for the button group: fill matches the default button
+                     background and picks colors dynamically from the theme -->
+                <Rectangle Fill="{DynamicResource ButtonBackground}" RadiusX="4" RadiusY="4"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="PlayButton" Style="{DynamicResource AccentButtonStyle}" Width="48" Height="40" ToolTip="开始" Click="PlayButton_Click">
+                        <ui:SymbolIcon Symbol="Play"/>
+                    </Button>
+                    <Rectangle Width="1" Height="24" Fill="{DynamicResource ButtonBorderBrush}"/>
+                    <Button x:Name="ResetButton" Width="48" Height="40" Background="Transparent" BorderThickness="0" ToolTip="重置" Click="ResetButton_Click">
+                        <ui:SymbolIcon Symbol="Refresh"/>
+                    </Button>
+                    <Rectangle Width="1" Height="24" Fill="{DynamicResource ButtonBorderBrush}"/>
+                    <!-- Multi-account: opens a Flyout containing the draw-count input -->
+                    <Button x:Name="PeopleButton" Width="48" Height="40" Background="Transparent" BorderThickness="0" ToolTip="多账户">
+                        <ui:FlyoutService.Flyout>
+                            <ui:Flyout Placement="Top">
+                                <StackPanel Orientation="Horizontal" Margin="4">
+                                    <TextBlock x:Name="PeopleCountLabel" Text="抽取人数" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <ui:NumberBox x:Name="PeopleCountBox" Value="1" Minimum="1" Maximum="10" Width="140"
+                                                  SpinButtonPlacementMode="Compact" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </ui:Flyout>
+                        </ui:FlyoutService.Flyout>
+                        <ui:SymbolIcon Symbol="People"/>
+                    </Button>
+                    <Rectangle Width="1" Height="24" Fill="{DynamicResource ButtonBorderBrush}"/>
+                    <Button x:Name="SettingsButton" Width="48" Height="40" Background="Transparent" BorderThickness="0" ToolTip="设置" Click="SettingsButton_Click">
+                        <ui:SymbolIcon Symbol="Setting"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+
+    </Grid>
+</Window>
