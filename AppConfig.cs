@@ -18,7 +18,12 @@ namespace SimpleRollCall
         public bool MachineLearning { get; set; } = false; // Machine learning: drawn people enter a memory list and are not drawn again
 
         public static string ConfigPath =>
-            Path.Combine(AppContext.BaseDirectory, "SRC_Config.ini");
+            Path.Combine(AppDirectory, "SRC_Config.ini");
+
+        // Environment.ProcessPath is the real exe location; AppContext.BaseDirectory
+        // would point to the single-file extraction temp directory.
+        public static string AppDirectory =>
+            Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
 
         public static AppConfig Load()
         {
