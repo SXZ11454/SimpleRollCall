@@ -2,16 +2,17 @@ using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Resources;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Documents;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
-using Microsoft.Win32;
 using ModernWpf;
 using ModernWpf.Controls;
+using Res = SimpleRollCall.Properties.Resources;
 
 namespace SimpleRollCall
 {
@@ -21,10 +22,6 @@ namespace SimpleRollCall
     public partial class MainWindow : Window
     {
         private const int DrawDurationMs = 3000;
-        private static readonly Uri RepositoryUrl = new("https://github.com/SXZ11454/SimpleRollCall");
-
-        private static readonly ResourceManager StringResources =
-            new("SimpleRollCall.Properties.Resources", typeof(MainWindow).Assembly);
 
         private readonly AppConfig _config;
         private readonly DispatcherTimer _timer;
@@ -37,30 +34,30 @@ namespace SimpleRollCall
         private bool[] _stopped = Array.Empty<bool>();
         private bool _drawing;
         private bool _pausing;
+        private bool _transitioning; // true while the settings page slides in or out
         private readonly HashSet<string> _memory = new(); // Machine learning: drawn people (temporary memory list)
 
         public MainWindow()
         {
             InitializeComponent();
 
-            try { Encoding.RegisterProvider(CodePagesEncodingProvider.Instance); } catch { /* falls back to utf-8 if gb18030 is unavailable */ }
-
-            _config = AppConfig.Load();
+            _config = AppConfig.Current;
             PeopleCountBox.Value = _config.DrawCount;
-            ApplyTheme();
-            CultureInfo.CurrentUICulture = _config.GetCulture();
-            ApplyLocalization();
-            LoadNames();
+            // Subscribe after the initial value is restored so startup does not rewrite the config
+            PeopleCountBox.ValueChanged += PeopleCountBox_ValueChanged;
 
-            // Settings use ContentDialog; a fresh dialog instance and panel are created per show
             _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
             _timer.Tick += Timer_Tick;
 
+            // The title bar back button (only shown while the settings page is open)
+            var backCommand = new RelayCommand(CloseSettings);
+            TitleBar.SetBackButtonCommand(this, backCommand);
+            InputBindings.Add(new KeyBinding(backCommand, Key.Escape, ModifierKeys.None));
+
+            ApplySettings();
+
             Closed += (_, _) => _timer.Stop();
         }
-
-        private static string L(string key) =>
-            StringResources.GetString(key, CultureInfo.CurrentUICulture) ?? key;
 
         // ---------- Draw ----------
 
@@ -77,8 +74,16 @@ namespace SimpleRollCall
             // then open the settings screen after confirmation
             if (_names.Count == 0)
             {
-                await ShowNoticeAsync(L("NoNames"));
+                await ShowNoticeAsync(Res.NoNames);
                 OpenSettings();
+                return;
+            }
+
+            _finalNames = PickNames(GetDrawCount());
+            if (_finalNames.Length == 0)
+            {
+                // Every person is filtered out by the odds rules (all weights are 0)
+                await ShowNoticeAsync(Res.OddsNoOne);
                 return;
             }
 
@@ -89,8 +94,7 @@ namespace SimpleRollCall
 
         private void StartDraw()
         {
-            int count = GetDrawCount();
-            _finalNames = PickNames(count);
+            int count = _finalNames.Length;
             _stopped = new bool[count];
             _stopTimesMs = new double[count];
 
@@ -220,13 +224,27 @@ namespace SimpleRollCall
             DrawProgress.Value = 100;
             SetPlayIcon(true);
 
-            // Machine learning: drawn people join the memory list; once everyone has been
-            // drawn, the memory is cleared and all names become drawable again
+            // Machine learning: drawn people join the memory list; once everybody who
+            // can still be drawn has been drawn, the memory is cleared and everybody
+            // becomes drawable again. Weight 0 people never take part and weight 100
+            // people bypass the memory, so only the people in between have to be covered.
             if (_config.MachineLearning)
             {
                 foreach (var name in _finalNames)
                     _memory.Add(name);
-                if (_memory.Count >= _names.Count)
+
+                bool pending = false;
+                foreach (var name in _names)
+                {
+                    int weight = GetWeight(name);
+                    if (weight > 0 && weight < 100 && !_memory.Contains(name))
+                    {
+                        pending = true;
+                        break;
+                    }
+                }
+
+                if (!pending)
                     _memory.Clear();
             }
         }
@@ -243,161 +261,266 @@ namespace SimpleRollCall
             MultiPanel.Children.Clear();
             MultiPanel.Visibility = Visibility.Collapsed;
             SingleText.Visibility = Visibility.Visible;
-            SingleText.Text = L("Waiting");
+            SingleText.Text = Res.Waiting;
         }
 
         private int GetDrawCount() =>
             Math.Clamp((int)Math.Round(PeopleCountBox.Value), 1, 10);
 
+        private void PeopleCountBox_ValueChanged(object sender, ModernWpf.Controls.NumberBoxValueChangedEventArgs e)
+        {
+            int count = GetDrawCount();
+            if (_config.DrawCount == count)
+                return;
+
+            _config.DrawCount = count;
+            _config.Save();
+        }
+
+        /// <summary>The roster, used by the odds table to offer the known people.</summary>
+        internal IReadOnlyList<string> Names => _names;
+
+        /// <summary>
+        /// Effective weight of a name according to the odds rules. A rule only counts
+        /// for people that are really in the roster; disabled rules and people without
+        /// a rule fall back to the normal weight of 50.
+        /// </summary>
+        private int GetWeight(string name)
+        {
+            foreach (var rule in _config.OddsRules)
+            {
+                if (!rule.Enabled)
+                    continue;
+                if (!string.Equals(rule.Name.Trim(), name, StringComparison.Ordinal))
+                    continue;
+                return rule.Weight;
+            }
+
+            return OddsRule.NormalWeight;
+        }
+
+        /// <summary>People that may take part in the draw, paired with their weight.</summary>
+        private List<(string Name, int Weight)> BuildPool(bool useMemory)
+        {
+            var pool = new List<(string, int)>();
+            foreach (var name in _names)
+            {
+                int weight = GetWeight(name);
+                if (weight <= 0)
+                    continue; // 爆率 0: this person is never drawn
+                if (useMemory && weight < 100 && _memory.Contains(name))
+                    continue; // machine learning: drawn recently
+                pool.Add((name, weight));
+            }
+
+            return pool;
+        }
+
         private string[] PickNames(int count)
         {
-            // Machine learning: only draw from names outside the memory list; when the
-            // memory covers the whole roster, clear it and draw from all names again
-            var pool = new List<string>();
-            foreach (var name in _names)
-                if (!_config.MachineLearning || !_memory.Contains(name))
-                    pool.Add(name);
+            var pool = BuildPool(useMemory: true);
 
             if (pool.Count == 0)
             {
+                // Machine learning excluded everybody: start a fresh round
                 _memory.Clear();
-                pool.AddRange(_names);
+                pool = BuildPool(useMemory: false);
             }
 
-            for (int i = pool.Count - 1; i > 0; i--)
+            if (pool.Count == 0)
+                return Array.Empty<string>(); // every weight is 0: nobody may be drawn
+
+            var result = new List<string>(count);
+            while (result.Count < count)
+                DrawCycle(pool, Math.Min(count - result.Count, pool.Count), result);
+            return result.ToArray();
+        }
+
+        /// <summary>
+        /// Picks up to <paramref name="slots"/> people from the pool in one round:
+        /// weight 100 people are placed first (they are always drawn), the remaining
+        /// slots are drawn proportionally to the weights.
+        /// </summary>
+        private void DrawCycle(List<(string Name, int Weight)> pool, int slots, List<string> result)
+        {
+            var remaining = new List<(string Name, int Weight)>(pool);
+
+            var guaranteed = new List<string>();
+            foreach (var entry in remaining)
+                if (entry.Weight >= 100)
+                    guaranteed.Add(entry.Name);
+            Shuffle(guaranteed);
+
+            foreach (var name in guaranteed)
+            {
+                if (slots == 0)
+                    break;
+                result.Add(name);
+                slots--;
+                remaining.RemoveAll(entry => entry.Name == name);
+            }
+
+            while (slots > 0 && remaining.Count > 0)
+            {
+                int total = 0;
+                foreach (var entry in remaining)
+                    total += entry.Weight;
+
+                int roll = _random.Next(total);
+                int index = 0;
+                int accumulated = 0;
+                for (; index < remaining.Count - 1; index++)
+                {
+                    accumulated += remaining[index].Weight;
+                    if (roll < accumulated)
+                        break;
+                }
+
+                result.Add(remaining[index].Name);
+                remaining.RemoveAt(index);
+                slots--;
+            }
+        }
+
+        private void Shuffle<T>(IList<T> list)
+        {
+            for (int i = list.Count - 1; i > 0; i--)
             {
                 int j = _random.Next(i + 1);
-                (pool[i], pool[j]) = (pool[j], pool[i]);
+                (list[i], list[j]) = (list[j], list[i]);
             }
-
-            var result = new string[count];
-            for (int i = 0; i < count; i++)
-                result[i] = pool[i % pool.Count];
-            return result;
         }
 
         private void SetPlayIcon(bool play)
         {
             if (PlayButton.Content is SymbolIcon icon)
                 icon.Symbol = play ? Symbol.Play : Symbol.Pause;
-            PlayButton.ToolTip = L(play ? "StartTooltip" : "PauseTooltip");
+            PlayButton.ToolTip = play ? Res.StartTooltip : Res.PauseTooltip;
         }
 
-        // ---------- Settings ----------
+        // ---------- Settings page (full screen, hosted in RootFrame) ----------
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e) => OpenSettings();
 
-        // Settings dialog control fields (the panel is rebuilt per show and used exactly
-        // once, avoiding parent conflicts from reusing elements across dialog instances)
-        private ComboBox? _languageCombo;
-        private ComboBox? _themeCombo;
-        private ComboBox? _encodingCombo;
-        private ModernWpf.Controls.ToggleSwitch? _autoStopSwitch;
-        private ModernWpf.Controls.ToggleSwitch? _machineLearningSwitch;
-        private TextBox? _filePathBox;
-
-        private async void OpenSettings()
+        /// <summary>
+        /// Shows the settings page on top of the whole window.
+        /// A plain page inside a frame replaces the old ContentDialog, so there is no
+        /// ShowAsync (and therefore no waiting on an active window) that could hang.
+        /// </summary>
+        internal void OpenSettings()
         {
-            var panel = BuildSettingsPanel();
-            var dialog = new ContentDialog
-            {
-                Owner = this, // Explicit owner: prevents ShowAsync from hanging on GetActiveWindow when the window is briefly inactive
-                Title = L("Settings"),
-                PrimaryButtonText = L("Confirm"),
-                Content = panel
-            };
-            dialog.PrimaryButtonClick += SettingsDialog_PrimaryButtonClick;
-            await dialog.ShowAsync();
-        }
-
-        private StackPanel BuildSettingsPanel()
-        {
-            var panel = new StackPanel();
-
-            panel.Children.Add(new TextBlock { Text = L("Language"), FontSize = 14, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
-            _languageCombo = new ComboBox { SelectedIndex = _config.Language == "en" ? 1 : 0, Margin = new Thickness(0, 0, 0, 12) };
-            _languageCombo.Items.Add(new ComboBoxItem { Content = "中文" });
-            _languageCombo.Items.Add(new ComboBoxItem { Content = "English" });
-            panel.Children.Add(_languageCombo);
-
-            panel.Children.Add(new TextBlock { Text = L("Theme"), FontSize = 14, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
-            _themeCombo = new ComboBox { SelectedIndex = _config.Theme switch { "light" => 1, "dark" => 2, _ => 0 }, Margin = new Thickness(0, 0, 0, 12) };
-            _themeCombo.Items.Add(new ComboBoxItem { Content = L("ThemeSystem") });
-            _themeCombo.Items.Add(new ComboBoxItem { Content = L("ThemeLight") });
-            _themeCombo.Items.Add(new ComboBoxItem { Content = L("ThemeDark") });
-            panel.Children.Add(_themeCombo);
-
-            panel.Children.Add(new TextBlock { Text = L("Encoding"), FontSize = 14, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
-            _encodingCombo = new ComboBox { SelectedIndex = _config.EncodingName == "gb18030" ? 1 : 0, Margin = new Thickness(0, 0, 0, 12) };
-            _encodingCombo.Items.Add(new ComboBoxItem { Content = "UTF-8" });
-            _encodingCombo.Items.Add(new ComboBoxItem { Content = "GB18030" });
-            panel.Children.Add(_encodingCombo);
-
-            var autoStopPanel = new DockPanel { Margin = new Thickness(0, 0, 0, 12) };
-            _autoStopSwitch = new ModernWpf.Controls.ToggleSwitch { OnContent = "", OffContent = "", IsOn = _config.AutoStop, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
-            autoStopPanel.Children.Add(_autoStopSwitch);
-            DockPanel.SetDock(_autoStopSwitch, Dock.Right);
-            autoStopPanel.Children.Add(new TextBlock { Text = L("AutoStop"), FontSize = 14, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
-            panel.Children.Add(autoStopPanel);
-
-            var mlPanel = new DockPanel { Margin = new Thickness(0, 0, 0, 12) };
-            _machineLearningSwitch = new ModernWpf.Controls.ToggleSwitch { OnContent = "", OffContent = "", IsOn = _config.MachineLearning, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
-            mlPanel.Children.Add(_machineLearningSwitch);
-            DockPanel.SetDock(_machineLearningSwitch, Dock.Right);
-            mlPanel.Children.Add(new TextBlock { Text = L("MachineLearning"), FontSize = 14, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
-            panel.Children.Add(mlPanel);
-
-            panel.Children.Add(new TextBlock { Text = L("File"), FontSize = 14, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
-            var filePanel = new DockPanel { Margin = new Thickness(0, 0, 0, 16) };
-            var clearButton = new Button { Content = L("ClearFile"), Margin = new Thickness(8, 0, 0, 0) };
-            clearButton.Click += (_, _) => _filePathBox.Text = "";
-            filePanel.Children.Add(clearButton);
-            DockPanel.SetDock(clearButton, Dock.Right);
-            var browseButton = new Button { Content = L("Browse"), Margin = new Thickness(8, 0, 0, 0) };
-            browseButton.Click += (_, _) => _filePathBox.Text = PickNamesFile();
-            filePanel.Children.Add(browseButton);
-            DockPanel.SetDock(browseButton, Dock.Right);
-            _filePathBox = new TextBox { IsReadOnly = true, Text = _config.NamesFile, VerticalContentAlignment = VerticalAlignment.Center };
-            filePanel.Children.Add(_filePathBox);
-            panel.Children.Add(filePanel);
-
-            panel.Children.Add(new Separator { Margin = new Thickness(0, 4, 0, 8) });
-            panel.Children.Add(new TextBlock { Text = L("Version"), FontSize = 12, Opacity = 0.6 });
-            panel.Children.Add(new TextBlock { Text = L("Copyright"), FontSize = 12, Opacity = 0.6, TextWrapping = TextWrapping.Wrap });
-            panel.Children.Add(new TextBlock { Text = L("License"), FontSize = 12, Opacity = 0.6 });
-
-            var repoText = new TextBlock { FontSize = 12, Opacity = 0.6 };
-            var repoLink = new Hyperlink { NavigateUri = RepositoryUrl };
-            repoLink.Inlines.Add(L("Repository"));
-            repoLink.RequestNavigate += (_, e) =>
-                Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
-            repoText.Inlines.Add(repoLink);
-            panel.Children.Add(repoText);
-
-            return panel;
-        }
-
-        private string PickNamesFile()
-        {
-            var dialog = new OpenFileDialog { Filter = L("TextFileFilter"), Title = L("File") };
-            return dialog.ShowDialog() == true ? dialog.FileName : _filePathBox.Text;
-        }
-
-        private void SettingsDialog_PrimaryButtonClick(object sender, ContentDialogButtonClickEventArgs e)
-        {
-            if (_languageCombo is null || _themeCombo is null || _encodingCombo is null ||
-                _autoStopSwitch is null || _machineLearningSwitch is null || _filePathBox is null)
+            if (_transitioning || RootFrame.Visibility == Visibility.Visible)
                 return;
 
-            _config.Language = _languageCombo.SelectedIndex == 1 ? "en" : "zh";
-            _config.Theme = _themeCombo.SelectedIndex switch { 1 => "light", 2 => "dark", _ => "system" };
-            _config.EncodingName = _encodingCombo.SelectedIndex == 1 ? "gb18030" : "utf-8";
-            _config.AutoStop = _autoStopSwitch.IsOn;
-            _config.MachineLearning = _machineLearningSwitch.IsOn;
-            _config.NamesFile = _filePathBox.Text.Trim();
-            _config.DrawCount = GetDrawCount();
-            _config.Save();
+            var page = new SettingsPage(_config, this);
+            RootFrame.Content = page;
+            RootFrame.Visibility = Visibility.Visible;
+            ApplyTitleBar();
+            AnimatePage(page, entering: true, onCompleted: null);
+        }
 
+        /// <summary>Called by the title bar back button (or Escape) of the settings page.</summary>
+        internal void CloseSettings()
+        {
+            if (_transitioning || RootFrame.Visibility != Visibility.Visible)
+                return;
+
+            if (RootFrame.Content is FrameworkElement page)
+            {
+                // Slide the page away first, then drop it (drill-out, mirror of AnimatePage)
+                _transitioning = true;
+                AnimatePage(page, entering: false, onCompleted: () =>
+                {
+                    RootFrame.Content = null;
+                    RootFrame.Visibility = Visibility.Collapsed;
+                    ApplyTitleBar();
+                    _transitioning = false;
+                });
+            }
+            else
+            {
+                RootFrame.Content = null;
+                RootFrame.Visibility = Visibility.Collapsed;
+                ApplyTitleBar();
+            }
+        }
+
+        /// <summary>Rebuilds the visible settings page, used after the language changed.</summary>
+        internal void ReloadSettings()
+        {
+            if (RootFrame.Visibility == Visibility.Visible)
+                RootFrame.Content = new SettingsPage(_config, this);
+        }
+
+        /// <summary>
+        /// UWP style enter/leave animation: the page zooms in (grows from 90% to 100%
+        /// while fading in) when it opens and zooms back out when it closes.
+        /// </summary>
+        private static void AnimatePage(FrameworkElement page, bool entering, Action? onCompleted)
+        {
+            const double zoom = 0.9; // scale the page starts from (enter) / shrinks to (leave)
+            const int durationMs = 220;
+            var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+            var scale = new ScaleTransform(entering ? zoom : 1, entering ? zoom : 1);
+            page.RenderTransformOrigin = new Point(0.5, 0.5); // zoom around the page centre
+            page.RenderTransform = scale;
+            page.Opacity = entering ? 0 : 1;
+
+            var fade = new DoubleAnimation
+            {
+                From = page.Opacity,
+                To = entering ? 1 : 0,
+                Duration = TimeSpan.FromMilliseconds(durationMs),
+                EasingFunction = easing
+            };
+            var growX = new DoubleAnimation
+            {
+                From = scale.ScaleX,
+                To = entering ? 1 : zoom,
+                Duration = TimeSpan.FromMilliseconds(durationMs),
+                EasingFunction = easing
+            };
+            var growY = new DoubleAnimation
+            {
+                From = scale.ScaleY,
+                To = entering ? 1 : zoom,
+                Duration = TimeSpan.FromMilliseconds(durationMs),
+                EasingFunction = easing
+            };
+            Storyboard.SetTarget(fade, page);
+            Storyboard.SetTargetProperty(fade, new PropertyPath(FrameworkElement.OpacityProperty));
+            Storyboard.SetTarget(growX, page);
+            Storyboard.SetTargetProperty(growX, new PropertyPath("(UIElement.RenderTransform).(ScaleTransform.ScaleX)"));
+            Storyboard.SetTarget(growY, page);
+            Storyboard.SetTargetProperty(growY, new PropertyPath("(UIElement.RenderTransform).(ScaleTransform.ScaleY)"));
+
+            var storyboard = new Storyboard();
+            storyboard.Children.Add(fade);
+            storyboard.Children.Add(growX);
+            storyboard.Children.Add(growY);
+            storyboard.Completed += (_, _) =>
+            {
+                page.RenderTransform = Transform.Identity;
+                onCompleted?.Invoke();
+            };
+            storyboard.Begin();
+        }
+
+        /// <summary>
+        /// Title bar state while the settings page is shown: back button at the top-left
+        /// corner and the page name as the window title (colour stays theme default).
+        /// </summary>
+        private void ApplyTitleBar()
+        {
+            bool inSettings = RootFrame.Visibility == Visibility.Visible;
+            TitleBar.SetIsBackButtonVisible(this, inSettings);
+            Title = inSettings ? Res.Settings : Res.WindowTitle;
+        }
+
+        /// <summary>Applies the current configuration to the running application.</summary>
+        internal void ApplySettings()
+        {
             CultureInfo.CurrentUICulture = _config.GetCulture();
             ApplyTheme();
             ApplyLocalization();
@@ -440,21 +563,21 @@ namespace SimpleRollCall
 
         private void ApplyLocalization()
         {
-            Title = L("WindowTitle");
+            ApplyTitleBar(); // window title: "settings" while the settings page is open
 
             if (!_drawing)
             {
                 SingleText.Visibility = Visibility.Visible;
                 MultiPanel.Visibility = Visibility.Collapsed;
-                SingleText.Text = L("Waiting");
+                SingleText.Text = Res.Waiting;
             }
 
-            PlayButton.ToolTip = L(_drawing ? "PauseTooltip" : "StartTooltip");
-            ResetButton.ToolTip = L("ResetTooltip");
-            PeopleButton.ToolTip = L("MultiAccountTooltip");
-            SettingsButton.ToolTip = L("SettingsTooltip");
-            PeopleCountLabel.Text = L("PeopleCount");
-            // The settings panel is rebuilt with L() on every show, no update needed here
+            PlayButton.ToolTip = _drawing ? Res.PauseTooltip : Res.StartTooltip;
+            ResetButton.ToolTip = Res.ResetTooltip;
+            PeopleButton.ToolTip = Res.MultiAccountTooltip;
+            SettingsButton.ToolTip = Res.SettingsTooltip;
+            PeopleCountLabel.Text = Res.PeopleCount;
+            // The settings page is rebuilt from {x:Static} resources every time it opens
         }
 
         private async Task ShowNoticeAsync(string message)
@@ -462,9 +585,9 @@ namespace SimpleRollCall
             var dialog = new ContentDialog
             {
                 Owner = this,
-                Title = L("Notice"),
+                Title = Res.Notice,
                 Content = message,
-                CloseButtonText = L("Confirm")
+                CloseButtonText = Res.Confirm
             };
             await dialog.ShowAsync();
         }

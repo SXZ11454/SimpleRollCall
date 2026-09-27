@@ -5,9 +5,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:SimpleRollCall"
         xmlns:ui="http://schemas.modernwpf.com/2019"
+        xmlns:res="clr-namespace:SimpleRollCall.Properties"
         ui:WindowHelper.UseModernWindowStyle="True"
         mc:Ignorable="d"
-        Title="点名器" Height="640" Width="500" MinWidth="500" MinHeight="640">
+        Title="{x:Static res:Resources.WindowTitle}" Height="640" Width="500" MinWidth="500" MinHeight="640"
+        local:PressScale.Enabled="True">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
@@ -20,7 +22,8 @@
         <Grid Grid.Row="0">
             <Viewbox x:Name="DisplayBox" Stretch="Uniform" StretchDirection="DownOnly" Margin="24">
                 <Grid>
-                    <TextBlock x:Name="SingleText" Text="等待开抽" FontFamily="Segoe UI" FontSize="48" FontWeight="Bold"/>
+                    <TextBlock x:Name="SingleText" FontSize="48" FontWeight="Bold"
+                               Text="{x:Static res:Resources.Waiting}"/>
                     <WrapPanel x:Name="MultiPanel" Visibility="Collapsed" MaxWidth="1000"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Grid>
@@ -36,23 +39,28 @@
         <StackPanel Grid.Row="2" VerticalAlignment="Center">
             <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
                 <!-- Backdrop rectangle for the button group: fill matches the default button
-                     background and picks colors dynamically from the theme -->
-                <Rectangle Fill="{DynamicResource ButtonBackground}" RadiusX="4" RadiusY="4"/>
+                     background and picks colors dynamically from the theme.
+                     Square corners (no RadiusX/RadiusY) like every other control. -->
+                <Rectangle Fill="{DynamicResource ButtonBackground}"/>
                 <StackPanel Orientation="Horizontal">
-                    <Button x:Name="PlayButton" Style="{DynamicResource AccentButtonStyle}" Width="48" Height="40" ToolTip="开始" Click="PlayButton_Click">
+                    <Button x:Name="PlayButton" Style="{DynamicResource AccentButtonStyle}" Width="48" Height="40"
+                            ToolTip="{x:Static res:Resources.StartTooltip}" Click="PlayButton_Click">
                         <ui:SymbolIcon Symbol="Play"/>
                     </Button>
                     <Rectangle Width="1" Height="24" Fill="{DynamicResource ButtonBorderBrush}"/>
-                    <Button x:Name="ResetButton" Width="48" Height="40" Background="Transparent" BorderThickness="0" ToolTip="重置" Click="ResetButton_Click">
+                    <Button x:Name="ResetButton" Width="48" Height="40" Background="Transparent" BorderThickness="0"
+                            ToolTip="{x:Static res:Resources.ResetTooltip}" Click="ResetButton_Click">
                         <ui:SymbolIcon Symbol="Refresh"/>
                     </Button>
                     <Rectangle Width="1" Height="24" Fill="{DynamicResource ButtonBorderBrush}"/>
                     <!-- Multi-account: opens a Flyout containing the draw-count input -->
-                    <Button x:Name="PeopleButton" Width="48" Height="40" Background="Transparent" BorderThickness="0" ToolTip="多账户">
+                    <Button x:Name="PeopleButton" Width="48" Height="40" Background="Transparent" BorderThickness="0"
+                            ToolTip="{x:Static res:Resources.MultiAccountTooltip}">
                         <ui:FlyoutService.Flyout>
                             <ui:Flyout Placement="Top">
                                 <StackPanel Orientation="Horizontal" Margin="4">
-                                    <TextBlock x:Name="PeopleCountLabel" Text="抽取人数" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock x:Name="PeopleCountLabel" Text="{x:Static res:Resources.PeopleCount}"
+                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
                                     <ui:NumberBox x:Name="PeopleCountBox" Value="1" Minimum="1" Maximum="10" Width="140"
                                                   SpinButtonPlacementMode="Compact" VerticalAlignment="Center"/>
                                 </StackPanel>
@@ -61,12 +69,18 @@
                         <ui:SymbolIcon Symbol="People"/>
                     </Button>
                     <Rectangle Width="1" Height="24" Fill="{DynamicResource ButtonBorderBrush}"/>
-                    <Button x:Name="SettingsButton" Width="48" Height="40" Background="Transparent" BorderThickness="0" ToolTip="设置" Click="SettingsButton_Click">
+                    <Button x:Name="SettingsButton" Width="48" Height="40" Background="Transparent" BorderThickness="0"
+                            ToolTip="{x:Static res:Resources.SettingsTooltip}" Click="SettingsButton_Click">
                         <ui:SymbolIcon Symbol="Setting"/>
                     </Button>
                 </StackPanel>
             </Grid>
         </StackPanel>
+
+        <!-- Full screen settings host: covers the whole window and is collapsed again
+             as soon as SettingsPage sends the user back (no ContentDialog involved) -->
+        <Frame x:Name="RootFrame" Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ApplicationPageBackgroundThemeBrush}"
+               Visibility="Collapsed" NavigationUIVisibility="Hidden"/>
 
     </Grid>
 </Window>

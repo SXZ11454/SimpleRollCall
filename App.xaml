@@ -9,7 +9,12 @@
             <ResourceDictionary.MergedDictionaries>
                 <ui:ThemeResources />
                 <ui:XamlControlsResources />
-                <!-- Other merged dictionaries here -->
+                <!--
+                    Must stay LAST: WPF searches merged dictionaries from last to
+                    first, so this one overrides the ModernWpf corner radii and the
+                    few styles whose templates hard code a radius.
+                -->
+                <ResourceDictionary Source="SquareCorners.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <!-- Other app resources here -->
         </ResourceDictionary>

@@ -57,6 +57,18 @@
     <resheader name="writer">
         <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
     </resheader>
+    <data name="Back" xml:space="preserve">
+        <value>Back</value>
+    </data>
+    <data name="Options" xml:space="preserve">
+        <value>Options</value>
+    </data>
+    <data name="ToggleOff" xml:space="preserve">
+        <value>Off</value>
+    </data>
+    <data name="ToggleOn" xml:space="preserve">
+        <value>On</value>
+    </data>
     <data name="WindowTitle" xml:space="preserve">
         <value>Roll Call</value>
     </data>
@@ -127,7 +139,9 @@
         <value>OK</value>
     </data>
     <data name="Version" xml:space="preserve">
-        <value>Version 1.0.0</value>
+        <!-- The number is not part of the resource: SettingsPage shows
+             AppInfo.DisplayVersion, which appends the version from the csproj. -->
+        <value>Version </value>
     </data>
     <data name="Copyright" xml:space="preserve">
         <value>Copyright 2026 SXZ11454. All rights reserved.</value>
@@ -143,5 +157,29 @@
     </data>
     <data name="TextFileFilter" xml:space="preserve">
         <value>Text files|*.txt|All files|*.*</value>
+    </data>
+    <data name="Odds" xml:space="preserve">
+        <value>Odds</value>
+    </data>
+    <data name="OddsPerson" xml:space="preserve">
+        <value>Person</value>
+    </data>
+    <data name="OddsWeight" xml:space="preserve">
+        <value>Weight</value>
+    </data>
+    <data name="OddsEnabled" xml:space="preserve">
+        <value>Enabled</value>
+    </data>
+    <data name="OddsHint" xml:space="preserve">
+        <value>0 = never drawn, 50 = normal, 100 = always drawn; leave the cell empty to reset it to 50. Rules for people outside the roster are ignored.</value>
+    </data>
+    <data name="DeleteRow" xml:space="preserve">
+        <value>Delete row</value>
+    </data>
+    <data name="AddRow" xml:space="preserve">
+        <value>Add row</value>
+    </data>
+    <data name="OddsNoOne" xml:space="preserve">
+        <value>Nobody can be drawn: every weight is 0.</value>
     </data>
 </root>

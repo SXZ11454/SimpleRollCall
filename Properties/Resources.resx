@@ -57,6 +57,18 @@
     <resheader name="writer">
         <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
     </resheader>
+    <data name="Back" xml:space="preserve">
+        <value>返回</value>
+    </data>
+    <data name="Options" xml:space="preserve">
+        <value>选项</value>
+    </data>
+    <data name="ToggleOff" xml:space="preserve">
+        <value>关</value>
+    </data>
+    <data name="ToggleOn" xml:space="preserve">
+        <value>开</value>
+    </data>
     <data name="WindowTitle" xml:space="preserve">
         <value>点名器</value>
     </data>
@@ -127,7 +139,9 @@
         <value>确认</value>
     </data>
     <data name="Version" xml:space="preserve">
-        <value>版本 1.0.0</value>
+        <!-- The number is not part of the resource: SettingsPage shows
+             AppInfo.DisplayVersion, which appends the version from the csproj. -->
+        <value>版本 </value>
     </data>
     <data name="Copyright" xml:space="preserve">
         <value>Copyright 2026 SXZ11454. All rights reserved.</value>
@@ -143,5 +157,29 @@
     </data>
     <data name="TextFileFilter" xml:space="preserve">
         <value>文本文件|*.txt|所有文件|*.*</value>
+    </data>
+    <data name="Odds" xml:space="preserve">
+        <value>爆率</value>
+    </data>
+    <data name="OddsPerson" xml:space="preserve">
+        <value>人员</value>
+    </data>
+    <data name="OddsWeight" xml:space="preserve">
+        <value>爆率</value>
+    </data>
+    <data name="OddsEnabled" xml:space="preserve">
+        <value>是否启用</value>
+    </data>
+    <data name="OddsHint" xml:space="preserve">
+        <value>0 = 永不抽中，50 = 正常抽取，100 = 必中；留空自动恢复为 50。名单中不存在的人员，其规则会被忽略。</value>
+    </data>
+    <data name="DeleteRow" xml:space="preserve">
+        <value>删除此行</value>
+    </data>
+    <data name="AddRow" xml:space="preserve">
+        <value>新增一行</value>
+    </data>
+    <data name="OddsNoOne" xml:space="preserve">
+        <value>无人可抽：所有人的爆率都为 0。</value>
     </data>
 </root>

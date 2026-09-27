@@ -1,0 +1,272 @@
+<Page x:Class="SimpleRollCall.SettingsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:ui="http://schemas.modernwpf.com/2019"
+      xmlns:res="clr-namespace:SimpleRollCall.Properties"
+      xmlns:local="clr-namespace:SimpleRollCall"
+      xmlns:sys="clr-namespace:System;assembly=mscorlib"
+      Title="{x:Static res:Resources.Settings}"
+      Background="{DynamicResource ApplicationPageBackgroundThemeBrush}"
+      Unloaded="SettingsPage_Unloaded"
+      mc:Ignorable="d">
+
+    <Page.Resources>
+        <!-- Page header icon as a text button, Windows 10 Settings style: the gear glyph sits
+             on the plain page background and only turns into a grey tile while the mouse is
+             over it; pressing it darkens the tile. Clicking returns to the main page.
+             The cursor stays the default arrow (指针), not the hand. -->
+        <Style x:Key="HeaderIconButton" TargetType="Button">
+            <Setter Property="Width" Value="48"/>
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Arrow"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <!-- Square corners: no ControlCornerRadius rounding on purpose -->
+                        <Border x:Name="Chrome"
+                                Background="{TemplateBinding Background}">
+                            <Grid>
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  Margin="{TemplateBinding Padding}"/>
+                                <!-- Semi transparent black, shown while pressed to darken the tile -->
+                                <Border x:Name="PressedOverlay" Background="#30000000" Visibility="Collapsed"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background"
+                                        Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="PressedOverlay" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Page.Resources>
+
+    <!-- Full screen settings page, laid out like the Windows 10 Settings app.
+         The header row stays pinned at the top, only the settings below it scroll.
+         The gear in the header is a text button that sends the user back to the main
+         page (the title bar back button and Escape do the same, see MainWindow.OpenSettings).
+         Every change is applied and saved immediately, so there is no confirm button. -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Page title: gear button + page name (fixed, never scrolls away) -->
+        <DockPanel Grid.Row="0" Margin="2,16,2,16" LastChildFill="False">
+            <Button x:Name="HomeButton" Style="{StaticResource HeaderIconButton}"
+                    ToolTip="{x:Static res:Resources.Back}" Click="HomeButton_Click">
+                <ui:FontIcon Glyph="&#xE713;" FontSize="24"
+                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            </Button>
+            <TextBlock Text="{x:Static res:Resources.Settings}" FontSize="30" FontWeight="Regular"
+                       Margin="0,0,0,0" VerticalAlignment="Center"/>
+        </DockPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      HorizontalContentAlignment="Stretch">
+            <StackPanel Margin="16,0,16,24">
+
+                <!-- Language -->
+                <TextBlock Text="{x:Static res:Resources.Language}" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <!-- ModernWpf's combo style aligns Left (content sized), so stretch it explicitly -->
+                <ComboBox x:Name="LanguageCombo" HorizontalAlignment="Left"
+                          Width="160"
+                          SelectionChanged="LanguageCombo_SelectionChanged">
+                    <ComboBoxItem Content="中文"/>
+                    <ComboBoxItem Content="English"/>
+                </ComboBox>
+
+                <!-- Theme -->
+                <TextBlock Text="{x:Static res:Resources.Theme}" FontSize="20" FontWeight="SemiBold" Margin="0,28,0,8"/>
+                <ComboBox x:Name="ThemeCombo" HorizontalAlignment="Left"
+                          Width="160"
+                          SelectionChanged="ThemeCombo_SelectionChanged">
+                    <ComboBoxItem Content="{x:Static res:Resources.ThemeSystem}"/>
+                    <ComboBoxItem Content="{x:Static res:Resources.ThemeLight}"/>
+                    <ComboBoxItem Content="{x:Static res:Resources.ThemeDark}"/>
+                </ComboBox>
+
+                <!-- Encoding of the name list file -->
+                <TextBlock Text="{x:Static res:Resources.Encoding}" FontSize="20" FontWeight="SemiBold" Margin="0,28,0,8"/>
+                <ComboBox x:Name="EncodingCombo" HorizontalAlignment="Left"
+                          Width="160"
+                          SelectionChanged="EncodingCombo_SelectionChanged">
+                    <ComboBoxItem Content="UTF-8"/>
+                    <ComboBoxItem Content="GB18030"/>
+                </ComboBox>
+
+                <!-- Options -->
+                <TextBlock Text="{x:Static res:Resources.Options}" FontSize="20" FontWeight="SemiBold" Margin="0,28,0,12"/>
+
+                <TextBlock Text="{x:Static res:Resources.AutoStop}" FontSize="15" Margin="0,0,0,6"/>
+                <ui:ToggleSwitch x:Name="AutoStopSwitch" HorizontalAlignment="Left"
+                                 OnContent="{x:Static res:Resources.ToggleOn}"
+                                 OffContent="{x:Static res:Resources.ToggleOff}"
+                                 Toggled="AutoStopSwitch_Toggled"/>
+
+                <TextBlock Text="{x:Static res:Resources.MachineLearning}" FontSize="15" Margin="0,20,0,6"/>
+                <ui:ToggleSwitch x:Name="MachineLearningSwitch" HorizontalAlignment="Left"
+                                 OnContent="{x:Static res:Resources.ToggleOn}"
+                                 OffContent="{x:Static res:Resources.ToggleOff}"
+                                 Toggled="MachineLearningSwitch_Toggled"/>
+
+                <!-- Name list file: fixed 160 px box with the two actions stacked below it -->
+                <TextBlock Text="{x:Static res:Resources.File}" FontSize="20" FontWeight="SemiBold" Margin="0,28,0,8"/>
+                <StackPanel HorizontalAlignment="Left" Margin="0,0,0,8">
+                    <TextBox x:Name="FilePathBox" Width="Auto" MinWidth="160" IsReadOnly="True"
+                             VerticalContentAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="{x:Static res:Resources.Browse}"
+                                Click="BrowseButton_Click"/>
+                        <Button Margin="8,0,0,0"
+                                Content="{x:Static res:Resources.ClearFile}"
+                                Click="ClearFileButton_Click"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Odds (weight) table: the rules are read on every draw, so edits take
+                     effect immediately. The + button below the table appends a rule, the
+                     - button, Delete or a right click removes the selected one.
+                     The table always keeps one row: once the last rule is gone a blank
+                     row (every control, no content) takes its place, and that single
+                     empty row may not be deleted - the table never ends up empty.
+                     Deleting is handled by hand only (CanUserDeleteRows=False), so the
+                     built in Delete key cannot slip past that rule. -->
+                <TextBlock Text="{x:Static res:Resources.Odds}" FontSize="20" FontWeight="SemiBold" Margin="0,28,0,6"/>
+                <TextBlock FontSize="13" Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,10"
+                           Text="{x:Static res:Resources.OddsHint}"/>
+                <!-- Width hugs the three columns (HorizontalAlignment=Left keeps it from
+                     stretching to the window), the height follows the rows. -->
+                <DataGrid x:Name="RulesGrid"
+                          AutoGenerateColumns="False"
+                          Width="Auto"
+                          HorizontalAlignment="Left"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          CanUserReorderColumns="False"
+                          CanUserResizeColumns="False"
+                          CanUserSortColumns="False"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Disabled"
+                          PreviewMouseRightButtonDown="RulesGrid_PreviewMouseRightButtonDown"
+                          KeyDown="RulesGrid_KeyDown"
+                          SelectionChanged="RulesGrid_SelectionChanged">
+                    <DataGrid.Columns>
+                        <!-- Person: pick somebody from the roster, or type any text
+                             (people that are not in the list are ignored by the draw).
+                             Column hugs the fixed 160px box, it never stretches. -->
+                        <DataGridTemplateColumn Width="Auto"
+                                                Header="{x:Static res:Resources.OddsPerson}">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <!-- fixed 160px input, whatever the name length is;
+                                         centred inside the cell -->
+                                    <ComboBox Width="160"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              IsEditable="True"
+                                              Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                              ItemsSource="{Binding Roster, RelativeSource={RelativeSource AncestorType={x:Type local:SettingsPage}}}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Odds: a small 120px number box shaped like the draw-count
+                             box on the main page (Compact spin buttons, they show up
+                             next to the box while hovering); an empty cell falls back
+                             to 50 (see OddsRule.WeightText). Centred in the cell. -->
+                        <DataGridTemplateColumn Width="Auto"
+                                                Header="{x:Static res:Resources.OddsWeight}">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ui:NumberBox Width="120"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  Minimum="0" Maximum="100" SmallChange="1"
+                                                  SpinButtonPlacementMode="Compact"
+                                                  ValidationMode="InvalidInputOverwritten"
+                                                  Text="{Binding WeightText, UpdateSourceTrigger=PropertyChanged}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Enabled (bool): a switch, off means the rule is ignored.
+                             Why the centring needs help: the theme forces the switch's
+                             inner grid to ToggleSwitchThemeMinWidth (154px in ModernWpf
+                             0.9.6; newer themes put the same MinWidth on the control),
+                             so the switch is much wider than the 80px cell and its pill
+                             slides out of the column. Overriding the resource for this
+                             cell (and MinWidth="0" on the control) lets it shrink to its
+                             natural size: a 40px pill plus the 12px On/Off gap the
+                             template always reserves on its right - which is what the
+                             12px left margin cancels, so the visible pill, not the
+                             control box, lands dead centre in every row.
+                             The transparent background makes the whole cell clickable:
+                             clicking anything but the switch flips it, like a check box. -->
+                        <DataGridTemplateColumn Width="80"
+                                                Header="{x:Static res:Resources.OddsEnabled}">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid Background="Transparent"
+                                          MouseLeftButtonDown="OddsEnabledCell_MouseLeftButtonDown">
+                                        <Grid.Resources>
+                                            <sys:Double x:Key="ToggleSwitchThemeMinWidth">0</sys:Double>
+                                        </Grid.Resources>
+                                        <ui:ToggleSwitch MinWidth="0" Margin="12,0,0,0"
+                                                         HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                         OnContent="" OffContent=""
+                                                         IsOn="{Binding Enabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                    <DataGrid.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="{x:Static res:Resources.DeleteRow}" Click="DeleteRow_Click"/>
+                        </ContextMenu>
+                    </DataGrid.ContextMenu>
+                </DataGrid>
+
+                <!-- Row buttons below the table: + appends a rule and jumps straight into
+                     its person box, - deletes the selected row (enabled once one is selected) -->
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button x:Name="AddRuleButton" Click="AddRuleButton_Click"
+                            Width="44" Height="34" FontSize="18" Content="+"
+                            ToolTip="{x:Static res:Resources.AddRow}"/>
+                    <Button x:Name="RemoveRuleButton" Click="RemoveRuleButton_Click"
+                            Width="44" Height="34" FontSize="18" Content="−" Margin="10,0,0,0"
+                            IsEnabled="False"
+                            ToolTip="{x:Static res:Resources.DeleteRow}"/>
+                </StackPanel>
+
+                <!-- About -->
+                <Separator Margin="0,32,0,12"/>
+                <TextBlock FontSize="13" Opacity="0.7" Text="{x:Static local:AppInfo.DisplayVersion}"/>
+                <TextBlock FontSize="13" Opacity="0.7" TextWrapping="Wrap"
+                           Text="{x:Static res:Resources.Copyright}"/>
+                <TextBlock FontSize="13" Opacity="0.7" Text="{x:Static res:Resources.License}"/>
+                <TextBlock FontSize="13" Margin="0,4,0,0">
+                    <Hyperlink NavigateUri="https://github.com/SXZ11454/SimpleRollCall"
+                               RequestNavigate="RepositoryLink_RequestNavigate"><Run Text="{x:Static res:Resources.Repository}"/></Hyperlink>
+                </TextBlock>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>
